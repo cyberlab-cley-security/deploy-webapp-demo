@@ -31,10 +31,10 @@ jobs:
           IMAGE_URI="${{ github.event.inputs.IMAGE_URI }}"
           echo "Updating kustomization.yaml with image: $IMAGE_URI"
 
-          yq eval -i '
-            .images[0].newName = ($IMAGE_URI | split(":")[0]) |
-            .images[0].newTag = ($IMAGE_URI | split(":")[-1])
-          ' --yaml-var IMAGE_URI="$IMAGE_URI" ./kustomization.yaml
+          # Extract newName et newTag
+          IMAGE_NAME=$(echo $IMAGE_URI | cut -d':' -f1)
+          IMAGE_TAG=$(echo $IMAGE_URI | cut -d':' -f2)
+          yq eval -i ".images[0].newName = \"$IMAGE_NAME\" | .images[0].newTag = \"$IMAGE_TAG\"" ./kustomization.yaml
 
       # Commit et push des changements
       - name: Commit and push changes
