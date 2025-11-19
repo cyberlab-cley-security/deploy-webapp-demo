@@ -32,9 +32,9 @@ jobs:
           echo "Updating kustomization.yaml with image: $IMAGE_URI"
 
           yq eval -i '
-            .images[0].newName = strenv(IMAGE_URI | split(":")[0]) |
-            .images[0].newTag = strenv(IMAGE_URI | split(":")[-1])
-          ' ./kustomization.yaml
+            .images[0].newName = ($IMAGE_URI | split(":")[0]) |
+            .images[0].newTag = ($IMAGE_URI | split(":")[-1])
+          ' --yaml-var IMAGE_URI="$IMAGE_URI" ./kustomization.yaml
 
       # Commit et push des changements
       - name: Commit and push changes
