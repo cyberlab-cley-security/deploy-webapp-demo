@@ -89,22 +89,21 @@ spec:
         # Readiness probe for health check
         readinessProbe:
           httpGet:
-          path: /
-          port: 3000
-        initialDelaySeconds: 15   # temps avant la 1ère vérification
-        timeoutSeconds: 3         # temps max pour attendre la réponse
-        periodSeconds: 5          # fréquence des probes
-        failureThreshold: 3       # nb d’échecs avant que le pod soit marqué NotReady
-
+            path: /
+            port: 3000
+          initialDelaySeconds: 15
+          timeoutSeconds: 3
+          periodSeconds: 5
+          failureThreshold: 3
         # Liveness probe to restart unhealthy pods
         livenessProbe:
           httpGet:
-          path: /
-          port: 3000
-        initialDelaySeconds: 30   # plus long délai pour que l'app démarre
-        timeoutSeconds: 5         # max 5s pour répondre
-        periodSeconds: 10         # fréquence des probes
-        failureThreshold: 3       # nb d’échecs avant restart
+            path: /
+            port: 3000
+          initialDelaySeconds: 30
+          timeoutSeconds: 5
+          periodSeconds: 10
+          failureThreshold: 3
 
 ---
 
