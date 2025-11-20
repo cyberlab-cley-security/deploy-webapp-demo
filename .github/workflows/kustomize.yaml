@@ -6,22 +6,52 @@ on:
       IMAGE_URI:
         description: 'Full Docker image URI (ex: 016246143337.dkr.ecr.us-east-1.amazonaws.com/chris:0.0.1)'
         type: string
-        default: '<CHANGE ME>' 
+        default: '<CHANGE ME>'
         required: true
 
 jobs:
-  update_kustomization:
+
+  ###############################################
+  # Check Kubernetes YAML with Checkov
+  ###############################################
+  check_k8s_with_checkov:
+    name: Kubernetes Security Scan (Checkov)
     runs-on: ubuntu-latest
+
+    steps:
+      # Checkout repo to access YAML files
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      # Install Python + Checkov
+      - name: Install Checkov
+        run: |
+          pip install checkov
+          checkov --version
+
+      # Run Checkov on all K8s manifests
+      - name: Scan Kubernetes YAML with Checkov
+        run: |
+          echo "Running Checkov on Kubernetes manifests..."
+          checkov --framework kubernetes -d .
+        continue-on-error: true
+
+  ###############################################
+  # Update kustomization.yaml 
+  ###############################################
+  update_kustomization:
+    name: Update Kustomization YAML
+    runs-on: ubuntu-latest
+    needs: check_k8s_with_checkov 
 
     steps:
       # Checkout repo
       - name: Checkout repository
         uses: actions/checkout@v3
         with:
-          # Le token est passé ici pour configurer l'accès en écriture
           token: ${{ secrets.PERSONAL_GITHUB_TOKEN }}
 
-      # Install yq to edit kustomization.yaml
+      # Install yq
       - name: Install yq
         run: |
           sudo wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -O /usr/local/bin/yq
@@ -34,12 +64,9 @@ jobs:
           IMAGE_URI="${{ github.event.inputs.IMAGE_URI }}"
           echo "Updating kustomization.yaml with image: $IMAGE_URI"
 
-          # Logique plus robuste pour extraire newName et newTag
-          # (gère mieux les noms d'images contenant des deux-points, ex: avec un port)
           IMAGE_TAG=$(echo "$IMAGE_URI" | sed 's/.*:\(.*\)/\1/')
           IMAGE_NAME=$(echo "$IMAGE_URI" | sed 's/\(.*\):.*/\1/')
           
-          # Si le format est 'name:tag' simple, on revient à l'ancien comportement
           if [ "$IMAGE_TAG" == "$IMAGE_NAME" ]; then
             IMAGE_NAME=$(echo $IMAGE_URI | cut -d':' -f1)
             IMAGE_TAG=$(echo $IMAGE_URI | cut -d':' -f2)
@@ -48,10 +75,11 @@ jobs:
           echo "Extracted Name: $IMAGE_NAME"
           echo "Extracted Tag: $IMAGE_TAG"
 
-          # Mise à jour avec yq
           yq eval -i ".images[0].newName = \"$IMAGE_NAME\" | .images[0].newTag = \"$IMAGE_TAG\"" ./kustomization.yaml
 
-      # Commit et push des changements (méthode recommandée)
+  ###############################################
+  # Commit and push changes 
+  ###############################################
       - name: Commit and push changes
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
