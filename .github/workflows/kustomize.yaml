@@ -15,7 +15,7 @@ jobs:
   # Check Kubernetes YAML with Checkov
   ###############################################
   check_k8s_with_checkov:
-    name: Kubernetes Security Scan (Checkov)
+    name: Security Scan - Kubernetes deployment (Checkov)
     runs-on: ubuntu-latest
 
     steps:
@@ -23,26 +23,26 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      # Install Python + Checkov
-      - name: Install Checkov
-        run: |
-          pip install checkov
-          checkov --version
-
-      # Run Checkov on all K8s manifests
+      # Run Checkov scan on all Kubernetes manifests
       - name: Scan Kubernetes YAML with Checkov
-        run: |
-          echo "Running Checkov on Kubernetes manifests..."
-          checkov --framework kubernetes -d .
+        uses: bridgecrewio/checkov-action@master
+        with:
+          directory: ${{ github.workspace }}
+          framework: kubernetes
+          quiet: true
+          output_format: github_failed_only
+          # Do not fail the pipeline if there are issues
+          soft_fail: true
+        # Ensure the job continues even if Checkov finds issues
         continue-on-error: true
 
   ###############################################
-  # Update kustomization.yaml 
+  # Update kustomization.yaml
   ###############################################
   update_kustomization:
     name: Update Kustomization YAML
     runs-on: ubuntu-latest
-    needs: check_k8s_with_checkov 
+    needs: check_k8s_with_checkov
 
     steps:
       # Checkout repo
@@ -66,19 +66,19 @@ jobs:
 
           IMAGE_TAG=$(echo "$IMAGE_URI" | sed 's/.*:\(.*\)/\1/')
           IMAGE_NAME=$(echo "$IMAGE_URI" | sed 's/\(.*\):.*/\1/')
-          
+
           if [ "$IMAGE_TAG" == "$IMAGE_NAME" ]; then
             IMAGE_NAME=$(echo $IMAGE_URI | cut -d':' -f1)
             IMAGE_TAG=$(echo $IMAGE_URI | cut -d':' -f2)
           fi
-          
+
           echo "Extracted Name: $IMAGE_NAME"
           echo "Extracted Tag: $IMAGE_TAG"
 
           yq eval -i ".images[0].newName = \"$IMAGE_NAME\" | .images[0].newTag = \"$IMAGE_TAG\"" ./kustomization.yaml
 
   ###############################################
-  # Commit and push changes 
+  # Commit and push changes
   ###############################################
       - name: Commit and push changes
         uses: stefanzweifel/git-auto-commit-action@v5
