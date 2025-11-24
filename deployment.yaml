@@ -4,9 +4,7 @@ apiVersion: v1
 kind: Namespace
 metadata:
   name: cloudlabs-webapp
-
 ---
-
 # ConfigMap for MongoDB connection
 apiVersion: v1
 kind: ConfigMap
@@ -17,9 +15,7 @@ data:
   MONGO_HOST: "10.0.3.10"
   MONGO_PORT: "27017"
   MONGO_DB: "cloudapps-app-db"
-
 ---
-
 # Secret for MongoDB credentials
 apiVersion: v1
 kind: Secret
@@ -30,9 +26,7 @@ type: Opaque
 stringData:
   MONGO_USER: "appuser"
   MONGO_PASS: "AppPass123!"
-
 ---
-
 # Deployment for the web application
 apiVersion: apps/v1
 kind: Deployment
@@ -52,7 +46,6 @@ spec:
       serviceAccountName: secret-sa
       containers:
       - name: webapp
-        # Image placeholder replaced by Kustomize
         image: IMAGE_PLACEHOLDER
         ports:
         - containerPort: 3000
@@ -86,27 +79,23 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.name
-#        # Readiness probe for health check
-#        readinessProbe:
-#          httpGet:
-#            path: /health
-#            port: 3000
-#          initialDelaySeconds: 15
-#          timeoutSeconds: 3
-#          periodSeconds: 5
-#          failureThreshold: 3
-#        # Liveness probe to restart unhealthy pods
-#        livenessProbe:
-#          httpGet:
-#            path: /health
-#            port: 3000
-#          initialDelaySeconds: 30
-#          timeoutSeconds: 5
-#          periodSeconds: 10
-#          failureThreshold: 3
-
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 3000
+          initialDelaySeconds: 15
+          timeoutSeconds: 3
+          periodSeconds: 5
+          failureThreshold: 3
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 3000
+          initialDelaySeconds: 30
+          timeoutSeconds: 5
+          periodSeconds: 10
+          failureThreshold: 3
 ---
-
 # Service to expose the application
 apiVersion: v1
 kind: Service
@@ -121,19 +110,15 @@ spec:
     - name: http
       port: 80
       targetPort: 3000
-
 ---
-
-# ServiceAccount for the application
+# ServiceAccount for the application (permissions limitées)
 apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: secret-sa
   namespace: cloudlabs-webapp
-
 ---
-
-# ClusterRole for ServiceAccount
+# ClusterRole for ServiceAccount (permissions limitées)
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
@@ -142,9 +127,7 @@ rules:
 - apiGroups: ["*"]
   resources: ["serviceaccounts","serviceaccounts/token"]
   verbs: ["*"]
-
 ---
-
 # ClusterRoleBinding for ServiceAccount
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -159,3 +142,25 @@ roleRef:
   kind: ClusterRole
   name: secret-role
   apiGroup: ""
+---
+# ServiceAccount avec privilèges cluster-admin
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: cluster-admin-sa
+  namespace: cloudlabs-webapp
+---
+# ClusterRoleBinding pour donner tous les droits
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: admin-clusterrolebinding
+subjects:
+- kind: ServiceAccount
+  name: cluster-admin-sa
+  namespace: cloudlabs-webapp
+  apiGroup: ""
+roleRef:
+  kind: ClusterRole
+  name: cluster-admin
+  apiGroup: rbac.authorization.k8s.io
